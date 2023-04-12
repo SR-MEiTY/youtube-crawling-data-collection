@@ -30,15 +30,15 @@ fi
 
 
 #1. Crawl MP4 video from Youtube and convert to WAV:
-#if [ $stage -le 1 ]; then
-#python crawl.py --url_playlist=$url_playlist --save_dir=$full_audio_save
-#fi
+if [ $stage -le 1 ]; then
+python crawl.py --url_playlist=$url_playlist --save_dir=$full_audio_save
+fi
 
 
 #2. Data Pre-processing (split the audio files into smaller files using Silero Voice Activity Detection (VAD))
-#if [ $stage -le 2 ]; then
-#python silero-VAD.py --folder_file_wav=$full_audio_save --save_dir=$VAD_split_dir
-#fi
+if [ $stage -le 2 ]; then
+python silero-VAD.py --folder_file_wav=$full_audio_save --save_dir=$VAD_split_dir
+fi
 
 
 

@@ -45,11 +45,6 @@ def download_video():
         #if number == 2:
         #    break
         id = re.match('^[^v]+v=(.{11}).*', video[i])
-        yt = YouTube(video[i])
-        yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-        if not os.path.exists(args.save_dir):
-            os.makedirs(args.save_dir)
-        # yt.download(args.save_dir, filename=id.group(1) + '.mp4')
             
         ''' Added by Mrinmoy Bhattacharjee, March 16, 2023 '''
         fName = ''
@@ -64,7 +59,15 @@ def download_video():
         elif os.path.exists(fName+'.mp4'):
             print('Requested video already downloaded')
         else:
-            yt.download(args.save_dir, filename=fName + '.mp4')
+            try:
+                yt = YouTube(video[i])
+                yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+                if not os.path.exists(args.save_dir):
+                    os.makedirs(args.save_dir)
+                # yt.download(args.save_dir, filename=id.group(1) + '.mp4')
+                yt.download(args.save_dir, filename=fName + '.mp4')
+            except:
+                print(f"Error")
         ''' ----------------------------------- '''
 
         #sh.copyfile(args.save_dir+'/'+id.group(1)+'.mp4',args.save_video+'/'+id.group(1)+'.mp4')
