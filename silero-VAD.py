@@ -86,13 +86,13 @@ def vad_new():
 
                                 prev_end = int(chunks['end'])
                                 chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE,2)
-                                fid.write(f"{chunks['start']},{chunks['end']},speech,{chunk_dur}\n")
+                                fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
                             else:
                                 chunk_dur = round((chunks['start']-prev_end)/SAMPLING_RATE,2)
-                                fid.write(f"{prev_end},{chunks['start']},sil,{chunk_dur}\n")
+                                fid.write(f"{prev_end},{chunks['start']},others,{chunk_dur}\n")
                                 prev_end = int(chunks['end'])
                                 chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
-                                fid.write(f"{chunks['start']},{chunks['end']},speech,{chunk_dur}\n")
+                                fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
                     speech_timestamps_mini.clear()
                     sum = 0
                     continue
@@ -106,17 +106,17 @@ def vad_new():
                         if prev_end==0:
                             if not int(chunks['start'])==0:
                                 chunk_dur = round(chunks['start']/SAMPLING_RATE,2)
-                                fid.write(f"0,{chunks['start']},sil,{chunk_dur}\n")
+                                fid.write(f"0,{chunks['start']},others,{chunk_dur}\n")
 
                             prev_end = int(chunks['end'])
                             chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE,2)
-                            fid.write(f"{chunks['start']},{chunks['end']},speech,{chunk_dur}\n")
+                            fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
                         else:
                             chunk_dur = round((chunks['start']-prev_end)/SAMPLING_RATE,2)
-                            fid.write(f"{prev_end},{chunks['start']},sil,{chunk_dur}\n")
+                            fid.write(f"{prev_end},{chunks['start']},others,{chunk_dur}\n")
                             prev_end = int(chunks['end'])
                             chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
-                            fid.write(f"{chunks['start']},{chunks['end']},speech,{chunk_dur}\n")
+                            fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
                 speech_timestamps_mini.clear()
                 sum = 0
                 break
@@ -143,7 +143,7 @@ def vad_new():
             with open(vad_textgrid_file, 'a+') as textgrid_fid:
                 textgrid_fid.write('       item [1]:\n')
                 textgrid_fid.write('          class = "IntervalTier"\n')
-                textgrid_fid.write('          name = "speech"\n')
+                textgrid_fid.write('          name = "one_speaker"\n')
                 textgrid_fid.write("          xmin = 0\n")
                 textgrid_fid.write(f"          xmax = {len(wav)/SAMPLING_RATE}\n")
                 textgrid_fid.write(f"          intervals: size = {num_lines-1}\n")
@@ -180,7 +180,7 @@ def re_vad_new():
                 smpEnd = int(row['end'])
                 file_dur = float(row['duration'])
                 
-                if (file_dur >= 10.0) and (row['label']=='speech'):
+                if (file_dur >= 10.0) and (row['label']=='one_speaker'):
                     wav_temp = wav[smpStart:smpEnd]
                     speech_timestamps1 = get_speech_timestamps(wav_temp, model, threshold=0.9, sampling_rate=SAMPLING_RATE)
                     print(f'wav_temp={len(wav_temp)} smpStart={smpStart} speech_timestamps1={speech_timestamps1}')
@@ -189,12 +189,12 @@ def re_vad_new():
                         if chunks['start']>0:
                             chunk_dur = round(chunks['start']/SAMPLING_RATE, 2)
                             with open(re_vad_file, 'a+') as fid:
-                                fid.write(f"{smpStart},{smpStart+chunks['start']},sil,{chunk_dur}\n")
+                                fid.write(f"{smpStart},{smpStart+chunks['start']},others,{chunk_dur}\n")
                             all_chunks += 1
                             
                         chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
                         with open(re_vad_file, 'a+') as fid:
-                            fid.write(f"{smpStart+chunks['start']},{smpStart+chunks['end']},speech,{chunk_dur}\n")
+                            fid.write(f"{smpStart+chunks['start']},{smpStart+chunks['end']},one_speaker,{chunk_dur}\n")
                         all_chunks += 1
                 else:
                     with open(re_vad_file, 'a+') as fid:
@@ -226,7 +226,7 @@ def re_vad_new():
             with open(vad_textgrid_file, 'a+') as textgrid_fid:
                 textgrid_fid.write('       item [1]:\n')
                 textgrid_fid.write('          class = "IntervalTier"\n')
-                textgrid_fid.write('          name = "speech"\n')
+                textgrid_fid.write('          name = "one_speaker"\n')
                 textgrid_fid.write("          xmin = 0\n")
                 textgrid_fid.write(f"          xmax = {len(wav)/SAMPLING_RATE}\n")
                 textgrid_fid.write(f"          intervals: size = {num_lines-1}\n")
@@ -312,7 +312,7 @@ def remove_new():
             with open(vad_textgrid_file, 'a+') as textgrid_fid:
                 textgrid_fid.write('       item [1]:\n')
                 textgrid_fid.write('          class = "IntervalTier"\n')
-                textgrid_fid.write('          name = "speech"\n')
+                textgrid_fid.write('          name = "one_speaker"\n')
                 textgrid_fid.write("          xmin = 0\n")
                 textgrid_fid.write(f"          xmax = {len(wav)/SAMPLING_RATE}\n")
                 textgrid_fid.write(f"          intervals: size = {num_lines-1}\n")
