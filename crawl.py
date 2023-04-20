@@ -47,31 +47,51 @@ def download_video():
         id = re.match('^[^v]+v=(.{11}).*', video[i])
             
         ''' Added by Mrinmoy Bhattacharjee, March 16, 2023 '''
+        yt = YouTube(video[i])
         fName = ''
-        with open('../../session_id.csv', 'r') as fid:
-            reader = csv.DictReader(fid)
-            for row in reader:
-                if (row['youtube_id']==id.group(1)):
-                    fName = row['session_id']
-                    break
+        if os.path.exists('session_id.csv'):
+            with open('session_id.csv', 'r') as fid:
+                reader = csv.DictReader(fid)
+                for row in reader:
+                    if (row['youtube_id']==id.group(1)):
+                        fName = row['session_id']
+
         if fName=='':
             print('Requested playlist video not found in the session_id.csv file. Skipping')
-        elif os.path.exists(fName+'.mp4'):
+            fName = video[i].split('=')[1]
+        
+        print(video[i], fName)
+        print(args.save_dir + '/' + fName+'.mp4')
+        if os.path.exists(args.save_dir + '/' + fName+'.mp4'):
             print('Requested video already downloaded')
         else:
+            print(f'Downloading video={number} {fName}')
+            
             try:
                 yt = YouTube(video[i])
-                yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+                #yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+                yt = yt.streams.filter(adaptive=True).first()
                 if not os.path.exists(args.save_dir):
                     os.makedirs(args.save_dir)
                 # yt.download(args.save_dir, filename=id.group(1) + '.mp4')
                 yt.download(args.save_dir, filename=fName + '.mp4')
             except:
                 print(f"Error")
+            
+            
+            '''
+            # yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+            yt = yt.streams.filter(adaptive=True).first()
+            if not os.path.exists(args.save_dir):
+                os.makedirs(args.save_dir)
+            # yt.download(args.save_dir, filename=id.group(1) + '.mp4')
+            yt.download(args.save_dir, filename=fName + '.mp4')
+            # yt.streams.first().download(args.save_dir, filename=fName + '.mp4')
+            '''
         ''' ----------------------------------- '''
 
         #sh.copyfile(args.save_dir+'/'+id.group(1)+'.mp4',args.save_video+'/'+id.group(1)+'.mp4')
-        print(number)
+        #print(number)
 
 def convert_to_mp3():
     for i in glob.glob(args.save_dir + '/*.mp4'):
