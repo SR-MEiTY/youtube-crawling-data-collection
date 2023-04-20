@@ -56,14 +56,16 @@ def cos_pair(a,b):
     return np.dot(a,b.T)/linalg.norm(a)/linalg.norm(b)
 
 
-for threshold in [0.2, 0.4, 0.6, 0.8]:
-    opDir = vad_dir + '/' + str(threshold) + '/'
+for threshold in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
+    # opDir = vad_dir + '/' + str(threshold) + '/'
+    opDir = vad_dir + '/'
         
     if not os.path.exists(opDir):
         os.makedirs(opDir)
-    wav_opDir = opDir + '/wav/'
-    if not os.path.exists(wav_opDir):
-        os.makedirs(wav_opDir)
+    
+    # wav_opDir = opDir + '/wav/'
+    # if not os.path.exists(wav_opDir):
+    #     os.makedirs(wav_opDir)
     
     #min_mat save min cosine pair of 1 wav; min_path save path of wav
     for csv_file in list_folder:
@@ -76,7 +78,7 @@ for threshold in [0.2, 0.4, 0.6, 0.8]:
         
         fName = csv_file.split('/')[-1].split('.')[0]
         
-        wav_path = wav_dir + '/' + fName + '.wav'
+        wav_path = vad_dir + '/' + fName + '.wav'
         print(f'wav_path={wav_path} csv_file={csv_file}')
         Xin, frequency = librosa.load(wav_path, mono=True, sr=None)
     
@@ -171,9 +173,10 @@ for threshold in [0.2, 0.4, 0.6, 0.8]:
                     thresholded_label = 'sil'
                     with open(cosine_csv_file, 'a+') as csv_fid:
                         csv_fid.write(f'{smpStart/frequency},{smpEnd/frequency},{thresholded_label},{np.round((smpEnd-smpStart)/frequency,2)},Yes\n')
-                    chunk_fName = wav_opDir + '/' + fName + '_' + str(segment_count) + '.wav'
-                    wavfile.write(chunk_fName, frequency, signal)
+                    # chunk_fName = wav_opDir + '/' + fName + '_' + str(segment_count) + '.wav'
+                    # wavfile.write(chunk_fName, frequency, signal)
                     segment_count += 1
+                    
                 # with open(cosine_textgrid_file, 'a+') as textgrid_fid:
                 #     textgrid_fid.write(f'          intervals [{row_count}]:\n')
                 #     textgrid_fid.write(f"                xmin = {smpStart/frequency}\n")

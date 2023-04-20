@@ -4,8 +4,8 @@
 
 # Modified by Mrinmoy Bhattacharjee, March 16, 2023
 
-url_playlist='https://youtube.com/playlist?list=PLAoPcoSH8Y5xVHRBpc6DJgPYYSNnVxRMU' # you can only add the url of the play list here
-# url_playlist='https://www.youtube.com/watch?v=1Ov4nczAPKo&list=PLw0OS4SJWbYBjpgcIQvCWyaffXd6w_DG4'
+#url_playlist='https://youtube.com/playlist?list=PLAoPcoSH8Y5xVHRBpc6DJgPYYSNnVxRMU' # you can only add the url of the play list here
+url_playlist='https://www.youtube.com/watch?v=1Ov4nczAPKo&list=PLw0OS4SJWbYBjpgcIQvCWyaffXd6w_DG4'
 full_audio_save='../sansad_speaker_dataset' # provide the path where you want to save
 VAD_split_dir='../VAD_Demo_fold' # Provide the path where want to store the vad split segments
 threshold=0.2 # specify the threshold here, irrelevant / noisy audio files have to be removed. For each language, we have to listen to some audio

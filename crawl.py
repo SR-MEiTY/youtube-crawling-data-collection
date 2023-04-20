@@ -36,8 +36,13 @@ args = parser.parse_args()
 START_INDEX = 0
 
 def download_video():
-    playlist = pytube.Playlist(args.url_playlist)
-    print('Number of videos in playlist: %s' % len(playlist.video_urls))
+    try:
+        playlist = pytube.Playlist(args.url_playlist)
+        print('Number of videos in playlist: %s' % len(playlist.video_urls))
+    except:
+        print('Network error')
+        return
+
     number = 0
     video = playlist.video_urls
     for i in range(0, len(video)):
@@ -57,7 +62,7 @@ def download_video():
                         fName = row['session_id']
 
         if fName=='':
-            print('Requested playlist video not found in the session_id.csv file. Skipping')
+            # print('Requested playlist video not found in the session_id.csv file. Skipping')
             fName = video[i].split('=')[1]
         
         if os.path.exists(args.save_dir + '/' + fName+'.mp4'):
@@ -67,25 +72,13 @@ def download_video():
             
             try:
                 yt = YouTube(video[i])
-                #yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-                yt = yt.streams.filter(adaptive=True).first()
+                yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
                 if not os.path.exists(args.save_dir):
                     os.makedirs(args.save_dir)
-                # yt.download(args.save_dir, filename=id.group(1) + '.mp4')
                 yt.download(args.save_dir, filename=fName + '.mp4')
             except:
                 print(f"Error")
-            
-            '''
-            # yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-            yt = yt.streams.filter(adaptive=True).first()
-            if not os.path.exists(args.save_dir):
-                os.makedirs(args.save_dir)
-            # yt.download(args.save_dir, filename=id.group(1) + '.mp4')
-            yt.download(args.save_dir, filename=fName + '.mp4')
-            # yt.streams.first().download(args.save_dir, filename=fName + '.mp4')
-            '''
-            
+                        
         ''' ----------------------------------- '''
 
         #sh.copyfile(args.save_dir+'/'+id.group(1)+'.mp4',args.save_video+'/'+id.group(1)+'.mp4')

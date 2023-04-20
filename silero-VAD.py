@@ -24,10 +24,10 @@ import glob
 import os
 import librosa
 import csv
-# from scipy.io import wavfile
+from scipy.io import wavfile
 
- 
-model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
+
+model, utils = torch.hub.load(repo_or_dir='./silero-vad-master/', model='silero_vad', source='local', force_reload=True)
 (get_speech_timestamps, save_audio, read_audio, VADIterator, collect_chunks) = utils
 
 
@@ -47,15 +47,16 @@ save_dir = args.save_dir
 
 def vad_new():
     for name in glob.glob(folder_file_wav + "/*"):
-        wav_file = folder_file_wav + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.wav'
+        print(f'name={name}')
+        wav_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.wav'
         vad_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.csv'
         
         j = 0
         wav = read_audio(name, sampling_rate = SAMPLING_RATE)
         # print(wav.cpu().detach().numpy())
         
-        # if not os.path.exists(wav_file):
-        #     wavfile.write(wav_file, SAMPLING_RATE, wav.cpu().detach().numpy())
+        if not os.path.exists(wav_file):
+            wavfile.write(wav_file, SAMPLING_RATE, wav.cpu().detach().numpy())
         speech_timestamps = get_speech_timestamps(wav, model, threshold=0.5, sampling_rate=SAMPLING_RATE)
 
         sum = 0
