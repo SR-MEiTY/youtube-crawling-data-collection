@@ -31,9 +31,6 @@ model, utils = torch.hub.load(repo_or_dir='./silero-vad-master/', model='silero_
 (get_speech_timestamps, save_audio, read_audio, VADIterator, collect_chunks) = utils
 
 
-# folder_file_wav='../sansad_speaker_dataset/'
-# save_dir = '../VAD_Demo_fold/'
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--folder_file_wav', type=str)
