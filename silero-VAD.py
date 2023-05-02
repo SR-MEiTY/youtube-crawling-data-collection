@@ -53,7 +53,6 @@ try:
     save_dir = save_dir + '/' + playlist_title.replace(' ', '_') + '/'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    print('Number of videos in playlist: %s' % len(playlist.video_urls))
 except:
     print('Network error')
     sys.exit(0)
