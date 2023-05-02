@@ -41,7 +41,7 @@ START_INDEX = 0
 def download_video():
     try:
         playlist = pytube.Playlist(args.url_playlist)
-        playlist_title = playlist.title
+        playlist_title = pytube.Playlist(args.url_playlist).title
         args.save_dir = args.save_dir + '/' + playlist_title.replace(' ', '_') + '/'
         if not os.path.exists(args.save_dir):
             os.makedirs(args.save_dir)

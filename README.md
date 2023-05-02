@@ -20,7 +20,7 @@ Youtube now requires logging into gmail account to download videos. When you fir
 		$ Please open https://www.google.com/device and input code <CODE SHOWN IN TERMINAL>
 		$ Press enter when you have completed this step.
 
-When you see this, go to https://www.google.com/device and provide the code shown in the terminal at the appropriate place in the webpage when prompted. You may need to sign-in to your gmail account. Once this step is done, go to the terminal and press Enter. Your videos should start downloading. 
+When you see this, go to https://www.google.com/device and provide the code shown in the terminal at the appropriate place in the webpage when prompted. You may need to sign-in to your gmail account. Allow "Youtube on TV" access to your gmail account. Once this step is done, go to the terminal and press Enter. Your videos should start downloading. 
 
 
 
