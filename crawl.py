@@ -14,8 +14,8 @@ import argparse
 import librosa
 import soundfile as sf
 import re
-from pytube import YouTube
 import pytube
+from pytube import YouTube
 import torchaudio
 import torchaudio.functional as F
 from moviepy.editor import *
@@ -28,9 +28,12 @@ parser = argparse.ArgumentParser()
 #download setting
 parser.add_argument('--url_playlist', type=str)
 parser.add_argument('--save_dir', type=str)
+parser.add_argument('--vad_dir', type=str)
 ##parser.add_argument('--save_video', type=str)
 
 args = parser.parse_args()
+save_dir = args.save_dir
+vad_dir = args.vad_dir
 
 # video index to continue crawling, index = 0 means the first video
 START_INDEX = 0
@@ -38,10 +41,17 @@ START_INDEX = 0
 def download_video():
     try:
         playlist = pytube.Playlist(args.url_playlist)
+        playlist_title = playlist.title
+        args.save_dir = args.save_dir + '/' + playlist_title.replace(' ', '_') + '/'
+        if not os.path.exists(args.save_dir):
+            os.makedirs(args.save_dir)
         print('Number of videos in playlist: %s' % len(playlist.video_urls))
     except:
         print('Network error')
         return
+
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
 
     number = 0
     video = playlist.video_urls
@@ -52,7 +62,7 @@ def download_video():
         id = re.match('^[^v]+v=(.{11}).*', video[i])
             
         ''' Added by Mrinmoy Bhattacharjee, March 16, 2023 '''
-        yt = YouTube(video[i])
+        # yt = YouTube(video[i])
         fName = ''
         if os.path.exists('session_id.csv'):
             with open('session_id.csv', 'r') as fid:
@@ -67,18 +77,18 @@ def download_video():
         
         if os.path.exists(args.save_dir + '/' + fName+'.mp4'):
             print('Requested video already downloaded')
-        else:
-            print(f'Downloading video={number} {fName}')
-            
+        else:            
             try:
-                yt = YouTube(video[i])
+                yt = YouTube(video[i], use_oauth=True, allow_oauth_cache=True)
+                print(f'Downloading #{number} Filename={fName} Title={yt.title}')
                 yt = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
                 if not os.path.exists(args.save_dir):
                     os.makedirs(args.save_dir)
                 yt.download(args.save_dir, filename=fName + '.mp4')
+                print(f'\t{fName} downloaded.')
             except:
-                print(f"Error")
-                        
+                print('\tDownload Error')
+            
         ''' ----------------------------------- '''
 
         #sh.copyfile(args.save_dir+'/'+id.group(1)+'.mp4',args.save_video+'/'+id.group(1)+'.mp4')
@@ -86,14 +96,20 @@ def download_video():
 
 def convert_to_mp3():
     for i in glob.glob(args.save_dir + '/*.mp4'):
+        mp3_fName = os.path.splitext(i)[0] + '.mp3'
+        if os.path.exists(mp3_fName):
+            continue
         videoclip = VideoFileClip(i)
         audioclip = videoclip.audio
         audioclip.write_audiofile(os.path.splitext(i)[0] + '.mp3')
 
 def convert_to_wav():
     for i in glob.glob(args.save_dir + '/*.mp3'):
+        wav_fName = args.vad_dir + '/' + os.path.splitext(i)[0].split('/')[-1] + '.wav'
+        if os.path.exists(wav_fName):
+            continue
         sound = AudioSegment.from_mp3(i)
-        sound.export(os.path.splitext(i)[0] + '.wav', format="wav")
+        sound.export(args.vad_dir + '/' + os.path.splitext(i)[0].split('/')[-1] + '.wav', format="wav")
 
 def resample_wav():
     for i in glob.glob(args.save_dir + '/*.wav'):
@@ -127,8 +143,8 @@ def remove():
         os.remove(file2)
 
 download_video()
-# convert_to_mp3()
-# convert_to_wav()
+convert_to_mp3()
+convert_to_wav()
 # resample_wav()
 # get_resample()
 # remove()

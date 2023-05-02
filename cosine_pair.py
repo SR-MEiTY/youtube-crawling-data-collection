@@ -25,38 +25,61 @@ from scipy import linalg
 import csv
 import os
 from scipy.io import wavfile
+import pytube
+from pytube import YouTube
+import sys
 
 
-# wav_dir = '../VAD_Demo_fold/'
+# video_dir = '../VAD_Demo_fold/'
 # threshold = 0.6
+
+SAMPLING_RATE = 16000
+
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--wav_dir', type=str)
+parser.add_argument('--url_playlist', type=str)
+parser.add_argument('--video_dir', type=str)
 parser.add_argument('--vad_dir', type=str)
 parser.add_argument('--threshold', type=float)
 args = parser.parse_args()
 
-wav_dir = args.wav_dir
+video_dir = args.video_dir
 vad_dir = args.vad_dir
 threshold = args.threshold
 
 
-print("Load wav from " + str(wav_dir))
-list_folder = str(vad_dir) + "/*.csv"
-list_folder = glob.glob(list_folder)
-print(list_folder)
+try:
+    playlist = pytube.Playlist(args.url_playlist)
+    playlist_title = playlist.title
+    video_dir = video_dir + '/' + playlist_title.replace(' ', '_') + '/'
+    if not os.path.exists(video_dir):
+        os.makedirs(video_dir)
+    vad_dir = vad_dir + '/' + playlist_title.replace(' ', '_') + '/'
+    if not os.path.exists(vad_dir):
+        os.makedirs(vad_dir)
+    print('Number of videos in playlist: %s' % len(playlist.video_urls))
+except:
+    print('Network error')
+    sys.exit(0)
 
+
+print("Load wav from " + str(vad_dir))
+list_folder = str(vad_dir) + "/*.wav"
+list_folder = glob.glob(list_folder)
+print(f'list_folder={list_folder}')
 
 classifier = EncoderClassifier.from_hparams(source='speechbrain/spkrec-ecapa-voxceleb')
 
 #define cospair function
 
 def cos_pair(a,b):
-    return np.dot(a,b.T)/linalg.norm(a)/linalg.norm(b)
+    # return np.dot(a,b.T)/linalg.norm(a)/linalg.norm(b)
+    return np.dot(a,b.permute(*torch.arange(b.ndim - 1, -1, -1)))/linalg.norm(a)/linalg.norm(b)
 
 
-for threshold in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
+
+for threshold_i in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
     # opDir = vad_dir + '/' + str(threshold) + '/'
     opDir = vad_dir + '/'
         
@@ -68,7 +91,9 @@ for threshold in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
     #     os.makedirs(wav_opDir)
     
     #min_mat save min cosine pair of 1 wav; min_path save path of wav
-    for csv_file in list_folder:
+    for f_ in list_folder:
+        # print(f'f_={f_}')
+        csv_file = f_.replace('.wav', '.csv')
         min_mat = []
         min_path = []
         start_mat = []
@@ -78,56 +103,60 @@ for threshold in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
         
         fName = csv_file.split('/')[-1].split('.')[0]
         
-        wav_path = vad_dir + '/' + fName + '.wav'
-        print(f'wav_path={wav_path} csv_file={csv_file}')
-        Xin, frequency = librosa.load(wav_path, mono=True, sr=None)
+        # wav_path = vad_dir + '/' + fName + '.wav'
+        # print(f'wav_path={f_} csv_file={csv_file}')
+        Xin, frequency = librosa.load(f_, mono=True, sr=SAMPLING_RATE)
     
         cosine_csv_file = opDir + '/' +  csv_file.split('/')[-1].replace('.csv', '_thresholded.csv')
         with open(cosine_csv_file, 'w+') as csv_fid:
             csv_fid.write('start,end,label,duration,label_change\n')
     
     
-        # cosine_textgrid_file = csv_file.replace('.csv', '_thresholded.textgrid')
-        # with open(cosine_textgrid_file, 'w+') as textgrid_fid:
-        #     textgrid_fid.write('    File type = "ooTextFile"\n')
-        #     textgrid_fid.write('    Object class = "TextGrid"\n')
-        #     textgrid_fid.write('    xmin = 0\n')
-        #     textgrid_fid.write(f'    xmax = {len(Xin)/frequency}\n')
-        #     textgrid_fid.write('    tiers? <exists>\n')
-        #     textgrid_fid.write('    size = 1\n')
-        #     textgrid_fid.write('    item []:\n')
+        cosine_textgrid_file = csv_file.replace('.csv', '_thresholded.textgrid')
+        with open(cosine_textgrid_file, 'w+') as textgrid_fid:
+            textgrid_fid.write('    File type = "ooTextFile"\n')
+            textgrid_fid.write('    Object class = "TextGrid"\n')
+            textgrid_fid.write('    xmin = 0\n')
+            textgrid_fid.write(f'    xmax = {len(Xin)/frequency}\n')
+            textgrid_fid.write('    tiers? <exists>\n')
+            textgrid_fid.write('    size = 1\n')
+            textgrid_fid.write('    item []:\n')
     
         num_rows = 0
         with open(csv_file, 'r') as fid:
             lines = fid.readlines()
             num_rows = len(lines)-1
     
-        # with open(cosine_textgrid_file, 'a+') as textgrid_fid:
-        #     textgrid_fid.write('       item [1]:\n')
-        #     textgrid_fid.write('          class = "IntervalTier"\n')
-        #     textgrid_fid.write('          name = "speech"\n')
-        #     textgrid_fid.write("          xmin = 0\n")
-        #     textgrid_fid.write(f"          xmax = {len(Xin)/frequency}\n")
-        #     textgrid_fid.write(f"          intervals: size = {num_rows-1}\n")
+        with open(cosine_textgrid_file, 'a+') as textgrid_fid:
+            textgrid_fid.write('       item [1]:\n')
+            textgrid_fid.write('          class = "IntervalTier"\n')
+            textgrid_fid.write('          name = "speaker_tier"\n')
+            textgrid_fid.write("          xmin = 0\n")
+            textgrid_fid.write(f"          xmax = {len(Xin)/frequency}\n")
+            textgrid_fid.write(f"          intervals: size = {num_rows-1}\n")
         
         segment_count = 0
         with open(csv_file, 'r') as fid:
             readlines = csv.DictReader(fid)
             row_count = 1
             for row in readlines:
+                # print(f'{csv_file} row={row}')
                 smpStart = int(row['start'])
                 smpEnd = int(row['end'])
                 duration = float(row['duration'])
-                label = row['label']
+                # print(f'smpStart={smpStart} {smpStart/frequency} smpEnd={smpEnd} {smpEnd/frequency} duration={duration}')
                 signal = Xin[smpStart:smpEnd]
-                print(f"{csv_file.split('/')[-1]} ({row_count}/{num_rows}) signal={len(signal)} start={smpStart} end={smpEnd} dur={duration}")
+
                 row_count += 1
-                if label=='sil':
-                    # with open(cosine_textgrid_file, 'a+') as textgrid_fid:
-                    #     textgrid_fid.write(f'          intervals [{row_count}]:\n')
-                    #     textgrid_fid.write(f"                xmin = {smpStart/frequency}\n")
-                    #     textgrid_fid.write(f"                xmax = {smpEnd/frequency}\n")
-                    #     textgrid_fid.write("                text = \"sil\"\n")
+                if row['label']=='others':
+                    with open(cosine_textgrid_file, 'a+') as textgrid_fid:
+                        textgrid_fid.write(f'          intervals [{row_count}]:\n')
+                        textgrid_fid.write(f"                xmin = {smpStart/frequency}\n")
+                        textgrid_fid.write(f"                xmax = {smpEnd/frequency}\n")
+                        textgrid_fid.write("                text = \"others\"\n")
+
+                    with open(cosine_csv_file, 'a+') as csv_fid:
+                        csv_fid.write(f'{smpStart},{smpEnd},others,{np.round((smpEnd-smpStart)/frequency,2)},No\n')
     
                     continue
                             
@@ -153,7 +182,7 @@ for threshold in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
                 for i in range(len(audio)):
                     for j in range(len(audio)):
                         matrix_audio[i][j]=(cos_pair(audio[i], audio[j]))
-                        # print(matrix_audio)
+                # print(matrix_audio)
                 
                 matrix_audio_min_list = []
                 for r in matrix_audio:
@@ -165,20 +194,23 @@ for threshold in [threshold]: # [0.2, 0.4, 0.6, 0.8]:
                 else:
                     mymin = min(matrix_audio_min_list)
                 
-                if mymin>threshold:
-                    thresholded_label = 'speech'
+                if mymin>=threshold_i:
+                    thresholded_label = 'single_speaker'
                     with open(cosine_csv_file, 'a+') as csv_fid:
-                        csv_fid.write(f'{smpStart/frequency},{smpEnd/frequency},{thresholded_label},{np.round((smpEnd-smpStart)/frequency,2)},No\n')
+                        csv_fid.write(f'{smpStart},{smpEnd},{thresholded_label},{np.round((smpEnd-smpStart)/frequency,2)},No\n')
                 else:
-                    thresholded_label = 'sil'
+                    print(f'Label changed Scores: {mymin} {threshold_i}')
+                    thresholded_label = 'others'
                     with open(cosine_csv_file, 'a+') as csv_fid:
-                        csv_fid.write(f'{smpStart/frequency},{smpEnd/frequency},{thresholded_label},{np.round((smpEnd-smpStart)/frequency,2)},Yes\n')
+                        csv_fid.write(f'{smpStart},{smpEnd},{thresholded_label},{np.round((smpEnd-smpStart)/frequency,2)},Yes\n')
                     # chunk_fName = wav_opDir + '/' + fName + '_' + str(segment_count) + '.wav'
                     # wavfile.write(chunk_fName, frequency, signal)
                     segment_count += 1
                     
-                # with open(cosine_textgrid_file, 'a+') as textgrid_fid:
-                #     textgrid_fid.write(f'          intervals [{row_count}]:\n')
-                #     textgrid_fid.write(f"                xmin = {smpStart/frequency}\n")
-                #     textgrid_fid.write(f"                xmax = {smpEnd/frequency}\n")
-                #     textgrid_fid.write(f"                text = \"{thresholded_label}\"\n")
+                with open(cosine_textgrid_file, 'a+') as textgrid_fid:
+                    textgrid_fid.write(f'          intervals [{row_count}]:\n')
+                    textgrid_fid.write(f"                xmin = {float(smpStart)/frequency}\n")
+                    textgrid_fid.write(f"                xmax = {float(smpEnd)/frequency}\n")
+                    textgrid_fid.write(f"                text = \"{thresholded_label}\"\n")
+                    
+        print(f'Thresholded {cosine_textgrid_file} created')

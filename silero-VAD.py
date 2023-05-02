@@ -25,6 +25,9 @@ import os
 import librosa
 import csv
 from scipy.io import wavfile
+import pytube
+from pytube import YouTube
+import sys
 
 
 model, utils = torch.hub.load(repo_or_dir='./silero-vad-master/', model='silero_vad', source='local', force_reload=True)
@@ -33,46 +36,86 @@ model, utils = torch.hub.load(repo_or_dir='./silero-vad-master/', model='silero_
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--folder_file_wav', type=str)
+parser.add_argument('--url_playlist', type=str)
+parser.add_argument('--video_folder', type=str)
 parser.add_argument('--save_dir', type=str)
 args = parser.parse_args()
-folder_file_wav = args.folder_file_wav
+video_folder = args.video_folder
 save_dir = args.save_dir
 
+
+try:
+    playlist = pytube.Playlist(args.url_playlist)
+    playlist_title = playlist.title
+    video_folder = video_folder + '/' + playlist_title.replace(' ', '_') + '/'
+    if not os.path.exists(video_folder):
+        os.makedirs(video_folder)
+    save_dir = save_dir + '/' + playlist_title.replace(' ', '_') + '/'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    print('Number of videos in playlist: %s' % len(playlist.video_urls))
+except:
+    print('Network error')
+    sys.exit(0)
 
 
 
 def vad_new():
-    for name in glob.glob(folder_file_wav + "/*"):
+    for name in glob.glob(save_dir + "/*.wav"):
         print(f'name={name}')
-        wav_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.wav'
+        # wav_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.wav'
         vad_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.csv'
         
-        j = 0
-        wav = read_audio(name, sampling_rate = SAMPLING_RATE)
-        # print(wav.cpu().detach().numpy())
-        
-        if not os.path.exists(wav_file):
-            wavfile.write(wav_file, SAMPLING_RATE, wav.cpu().detach().numpy())
-        speech_timestamps = get_speech_timestamps(wav, model, threshold=0.5, sampling_rate=SAMPLING_RATE)
-
-        sum = 0
-        k = 0
-        speech_timestamps_mini = []
-        mini_audio = []
-
-        with open(vad_file, 'w+') as fid:
-            fid.write('start,end,label,duration\n')
+        if not os.path.exists(vad_file):
+            j = 0
+            wav = read_audio(name, sampling_rate = SAMPLING_RATE)
+            # print(wav.cpu().detach().numpy())
+            
+            # if not os.path.exists(wav_file):
+            #     wavfile.write(wav_file, SAMPLING_RATE, wav.cpu().detach().numpy())
+            speech_timestamps = get_speech_timestamps(wav, model, threshold=0.5, sampling_rate=SAMPLING_RATE)
+    
+            sum = 0
+            k = 0
+            speech_timestamps_mini = []
+            mini_audio = []
+    
+            with open(vad_file, 'w+') as fid:
+                fid.write('start,end,label,duration\n')
+                        
+            prev_end = 0
+            while(True):
+                sum =  sum + speech_timestamps[k]['end'] - speech_timestamps[k]['start']
+                # print(f'timestamps={speech_timestamps[k]}')
+                speech_timestamps_mini.append(speech_timestamps[k])
                     
-        prev_end = 0
-        while(True):
-            sum =  sum + speech_timestamps[k]['end'] - speech_timestamps[k]['start']
-            print(f'timestamps={speech_timestamps[k]}')
-            speech_timestamps_mini.append(speech_timestamps[k])
-                
-            if k < len(speech_timestamps)-1:
-                k = k + 1
-                if sum >= 48000:      
+                if k < len(speech_timestamps)-1:
+                    k = k + 1
+                    if sum >= 48000:      
+                        mini_audio.append(collect_chunks(speech_timestamps_mini, wav))
+                        # print(f'speech_timestamps_mini={speech_timestamps_mini}')
+                        for chunks in speech_timestamps_mini:
+                            with open(vad_file, 'a+') as fid:
+                                if prev_end==0:
+                                    if not int(chunks['start'])==0:
+                                        chunk_dur = round(chunks['start']/SAMPLING_RATE,2)
+                                        fid.write(f"0,{chunks['start']},others,{chunk_dur}\n")
+    
+                                    prev_end = int(chunks['end'])
+                                    chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE,2)
+                                    fid.write(f"{chunks['start']},{chunks['end']},single_speaker,{chunk_dur}\n")
+                                else:
+                                    chunk_dur = round((chunks['start']-prev_end)/SAMPLING_RATE,2)
+                                    fid.write(f"{prev_end},{chunks['start']},others,{chunk_dur}\n")
+                                    prev_end = int(chunks['end'])
+                                    chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
+                                    fid.write(f"{chunks['start']},{chunks['end']},single_speaker,{chunk_dur}\n")
+                        speech_timestamps_mini.clear()
+                        sum = 0
+                        continue
+                    else:
+                        continue
+                else:
                     mini_audio.append(collect_chunks(speech_timestamps_mini, wav))
                     # print(f'speech_timestamps_mini={speech_timestamps_mini}')
                     for chunks in speech_timestamps_mini:
@@ -80,48 +123,28 @@ def vad_new():
                             if prev_end==0:
                                 if not int(chunks['start'])==0:
                                     chunk_dur = round(chunks['start']/SAMPLING_RATE,2)
-                                    fid.write(f"0,{chunks['start']},sil,{chunk_dur}\n")
-
+                                    fid.write(f"0,{chunks['start']},others,{chunk_dur}\n")
+    
                                 prev_end = int(chunks['end'])
                                 chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE,2)
-                                fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
+                                fid.write(f"{chunks['start']},{chunks['end']},single_speaker,{chunk_dur}\n")
                             else:
                                 chunk_dur = round((chunks['start']-prev_end)/SAMPLING_RATE,2)
                                 fid.write(f"{prev_end},{chunks['start']},others,{chunk_dur}\n")
                                 prev_end = int(chunks['end'])
                                 chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
-                                fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
+                                fid.write(f"{chunks['start']},{chunks['end']},single_speaker,{chunk_dur}\n")
                     speech_timestamps_mini.clear()
                     sum = 0
-                    continue
-                else:
-                    continue
-            else:
-                mini_audio.append(collect_chunks(speech_timestamps_mini, wav))
-                # print(f'speech_timestamps_mini={speech_timestamps_mini}')
-                for chunks in speech_timestamps_mini:
-                    with open(vad_file, 'a+') as fid:
-                        if prev_end==0:
-                            if not int(chunks['start'])==0:
-                                chunk_dur = round(chunks['start']/SAMPLING_RATE,2)
-                                fid.write(f"0,{chunks['start']},others,{chunk_dur}\n")
+                    break
+                    
+                j = j + 1 
 
-                            prev_end = int(chunks['end'])
-                            chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE,2)
-                            fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
-                        else:
-                            chunk_dur = round((chunks['start']-prev_end)/SAMPLING_RATE,2)
-                            fid.write(f"{prev_end},{chunks['start']},others,{chunk_dur}\n")
-                            prev_end = int(chunks['end'])
-                            chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
-                            fid.write(f"{chunks['start']},{chunks['end']},one_speaker,{chunk_dur}\n")
-                speech_timestamps_mini.clear()
-                sum = 0
-                break
-                
-            j = j + 1 
+        vad_textgrid_file = save_dir + '/'  + os.path.splitext(os.path.basename(name.split('.')[0]))[0].replace(" ", "_") + '.textgrid'
+        if os.path.exists(vad_textgrid_file):
+            print(f'{name} TextGrid already exists')
+            continue
 
-        vad_textgrid_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.textgrid'
         with open(vad_textgrid_file, 'w+') as textgrid_fid:
             textgrid_fid.write('    File type = "ooTextFile"\n')
             textgrid_fid.write('    Object class = "TextGrid"\n')
@@ -141,7 +164,7 @@ def vad_new():
             with open(vad_textgrid_file, 'a+') as textgrid_fid:
                 textgrid_fid.write('       item [1]:\n')
                 textgrid_fid.write('          class = "IntervalTier"\n')
-                textgrid_fid.write('          name = "one_speaker"\n')
+                textgrid_fid.write('          name = "speaker_tier"\n')
                 textgrid_fid.write("          xmin = 0\n")
                 textgrid_fid.write(f"          xmax = {len(wav)/SAMPLING_RATE}\n")
                 textgrid_fid.write(f"          intervals: size = {num_lines-1}\n")
@@ -162,9 +185,13 @@ vad_new()
 def re_vad_new():   
     for name in glob.glob(save_dir + '/*.csv' ):
         re_vad_file = save_dir + '/.'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.csv'
-        print(f're_vad_file={re_vad_file}')
+        print(f're_vad_file={re_vad_file} name={name}')
         
-        media_file = glob.glob(folder_file_wav+'/'+name.split('/')[-1].split('.')[0]+'*')
+        # print(f'name={name}')
+        media_file = glob.glob(name.split('.csv')[0]+'*.wav')
+        # print(f'media_file={media_file}')
+        if len(media_file)==0:
+            continue
         wav = read_audio(media_file[0], sampling_rate = SAMPLING_RATE)
 
         with open(re_vad_file, 'w+') as fid:
@@ -174,14 +201,15 @@ def re_vad_new():
             read_lines = csv.DictReader(fid)
             all_chunks = 0
             for row in read_lines:
-                smpStart = int(row['start'])
-                smpEnd = int(row['end'])
+                # print(f'row={row}')
+                smpStart = int(float(row['start'])*len(wav))
+                smpEnd = int(float(row['end'])*len(wav))
                 file_dur = float(row['duration'])
                 
-                if (file_dur >= 10.0) and (row['label']=='one_speaker'):
+                if (file_dur >= 10.0) and (row['label']=='single_speaker'):
                     wav_temp = wav[smpStart:smpEnd]
                     speech_timestamps1 = get_speech_timestamps(wav_temp, model, threshold=0.9, sampling_rate=SAMPLING_RATE)
-                    print(f'wav_temp={len(wav_temp)} smpStart={smpStart} speech_timestamps1={speech_timestamps1}')
+                    # print(f'wav_temp={len(wav_temp)} smpStart={smpStart} speech_timestamps1={speech_timestamps1}')
                     
                     for chunks in speech_timestamps1:
                         if chunks['start']>0:
@@ -192,14 +220,14 @@ def re_vad_new():
                             
                         chunk_dur = round((chunks['end']-chunks['start'])/SAMPLING_RATE, 2)
                         with open(re_vad_file, 'a+') as fid:
-                            fid.write(f"{smpStart+chunks['start']},{smpStart+chunks['end']},one_speaker,{chunk_dur}\n")
+                            fid.write(f"{smpStart+chunks['start']},{smpStart+chunks['end']},single_speaker,{chunk_dur}\n")
                         all_chunks += 1
                 else:
                     with open(re_vad_file, 'a+') as fid:
                         fid.write(f"{row['start']},{row['end']},{row['label']},{row['duration']}\n")
                     all_chunks += 1
                     
-        print(f'all_chunks={all_chunks}')
+        # print(f'all_chunks={all_chunks}')
         vad_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.csv'
         os.remove(vad_file)
         os.rename(re_vad_file, vad_file)
@@ -224,7 +252,7 @@ def re_vad_new():
             with open(vad_textgrid_file, 'a+') as textgrid_fid:
                 textgrid_fid.write('       item [1]:\n')
                 textgrid_fid.write('          class = "IntervalTier"\n')
-                textgrid_fid.write('          name = "one_speaker"\n')
+                textgrid_fid.write('          name = "speaker_tier"\n')
                 textgrid_fid.write("          xmin = 0\n")
                 textgrid_fid.write(f"          xmax = {len(wav)/SAMPLING_RATE}\n")
                 textgrid_fid.write(f"          intervals: size = {num_lines-1}\n")
@@ -244,8 +272,9 @@ re_vad_new()
 def remove_new():
     for name in glob.glob(save_dir + '/*.csv' ):
         re_vad_remove_file = save_dir + '/.'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.csv'
-        # if os.path.exists(re_vad_remove_file):
-        #     continue
+        if os.path.exists(re_vad_remove_file):
+            print(f'{name} RE-VAD csv exists')
+            continue
         print(re_vad_remove_file)
         
         with open(re_vad_remove_file, 'w+') as fid:
@@ -280,7 +309,7 @@ def remove_new():
             if end>start:
                 with open(re_vad_remove_file, 'a+') as fid:
                     fid.write(f"{start},{end},{prev_label},{round((end-start)/SAMPLING_RATE,2)}\n")
-                print(f"{start},{end},{prev_label},{round((end-start)/SAMPLING_RATE,2)}\n")
+                # print(f"{start},{end},{prev_label},{round((end-start)/SAMPLING_RATE,2)}\n")
                     
 
         vad_file = save_dir + '/'  + os.path.splitext(os.path.basename(name))[0].replace(" ", "_") + '.csv'
@@ -310,7 +339,7 @@ def remove_new():
             with open(vad_textgrid_file, 'a+') as textgrid_fid:
                 textgrid_fid.write('       item [1]:\n')
                 textgrid_fid.write('          class = "IntervalTier"\n')
-                textgrid_fid.write('          name = "one_speaker"\n')
+                textgrid_fid.write('          name = "speaker_tier"\n')
                 textgrid_fid.write("          xmin = 0\n")
                 textgrid_fid.write(f"          xmax = {len(wav)/SAMPLING_RATE}\n")
                 textgrid_fid.write(f"          intervals: size = {num_lines-1}\n")
