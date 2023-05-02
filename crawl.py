@@ -18,9 +18,7 @@ import pytube
 from pytube import YouTube
 
 from pytube import innertube
-innertube._cache_dir = os.path.join('~/.cache/', 'pytube_cache')
-if not os.path.exists(innertube._cache_dir):
-    os.makedirs(innertube._cache_dir)
+innertube._cache_dir = os.path.join('./', '.cache')
 innertube._token_file = os.path.join(innertube._cache_dir, 'tokens.json')
 
 import torchaudio
