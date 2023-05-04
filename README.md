@@ -14,9 +14,7 @@ bash run_script.sh
 	1) Videos  : Contains .mp4, and .mp3 files of the downloaded videos
 	2) Textgrid: Contains .wav, .csv and .textgrid files of the downloaded videos.
 	
-Please note that the Textgrid directory will contain two .textgrid files for each video. 
-	
-One will be named as <video_id>.textgrid, while the other will be named <video_id>_thresholded.textgrid.
+6) Please note that the Textgrid directory will contain two .textgrid files for each video. One will be named as <video_id>.textgrid, while the other will be named <video_id>_thresholded.textgrid.
 	1) <video_id>.textgrid contains the annotations obtained just after performing VAD
 	2) <video_id>_thresholded.textgrid contains the annotations obtained after performing cosine similarity based filtering single speaker speech. You are supposed to use this textgrid file for updating the annotations using Praat. 
 	
